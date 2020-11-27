@@ -1,1 +1,1 @@
-include_directories("third_parth/eigen3")
+include_directories("third_party/eigen3")
