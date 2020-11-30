@@ -79,7 +79,11 @@ bool FrontEnd::InitRegistration(std::shared_ptr<RegistrationInterface>& registra
 
     if (registration_method == "NDT") {
         registration_ptr = std::make_shared<NDTRegistration>(config_node[registration_method]);
-    } else {
+    }
+    else if(registration_method == "ICP") {
+        registration_ptr = std::make_shared<ICPRegistration>(config_node[registration_method]);
+    } 
+    else {
         LOG(ERROR) << "没找到与 " << registration_method << " 相对应的点云匹配方式!";
         return false;
     }
