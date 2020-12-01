@@ -6,13 +6,9 @@
 #ifndef MY_LIDAR_LOCALIZATION_SENSOR_DATA_GNSS_DATA_HPP_
 #define MY_LIDAR_LOCALIZATION_SENSOR_DATA_GNSS_DATA_HPP_
 
-#include <vector>
-#include <string>
+#include <deque>
 
 #include "Geocentric/LocalCartesian.hpp"
-
-using std::vector;
-using std::string;
 
 namespace my_lidar_localization {
 class GNSSData {
@@ -34,6 +30,7 @@ class GNSSData {
   public: 
     void InitOriginPosition();
     void UpdateXYZ();
+    static bool SyncData(std::deque<GNSSData>& UnsyncedData, std::deque<GNSSData>& SyncedData, double sync_time);
 };
 }
 #endif
