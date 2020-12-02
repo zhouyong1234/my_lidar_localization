@@ -25,6 +25,7 @@ FrontEndFlow::FrontEndFlow(ros::NodeHandle& nh) {
     gnss_pub_ptr_ = std::make_shared<OdometryPublisher>(nh, "gnss", "map", "lidar", 100);
 
     front_end_ptr_ = std::make_shared<FrontEnd>();
+    distortion_adjust_ptr_ = std::make_shared<DistortionAdjust>();
 
     local_map_ptr_.reset(new CloudData::CLOUD());
     global_map_ptr_.reset(new CloudData::CLOUD());
@@ -162,6 +163,11 @@ bool FrontEndFlow::UpdateGNSSOdometry() {
 }
 
 bool FrontEndFlow::UpdateLaserOdometry() {
+
+    current_velocity_data_.TransformCoordinate(lidar_to_imu_);
+    distortion_adjust_ptr_->SetMotionInfo(0.1, current_velocity_data_);
+    distortion_adjust_ptr_->AdjustCloud(current_cloud_data_.cloud_ptr, current_cloud_data_.cloud_ptr);
+
     static bool front_end_pose_inited = false;
     if (!front_end_pose_inited) {
         front_end_pose_inited = true;
