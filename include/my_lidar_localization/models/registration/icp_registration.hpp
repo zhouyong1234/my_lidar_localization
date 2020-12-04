@@ -1,9 +1,3 @@
-/*
- * @Description: ICP 匹配模块
- * @Author: Zhou Yong
- * @Date: 2020-11-27 11:40:18
- */
-
 #ifndef MY_LIDAR_LOCALIZATION_MODELS_REGISTRATION_ICP_REGISTRATION_HPP_
 #define MY_LIDAR_LOCALIZATION_MODELS_REGISTRATION_ICP_REGISTRATION_HPP_
 
@@ -22,14 +16,12 @@ public:
                    const Eigen::Matrix4f& predict_pose,
                    CloudData::CLOUD_PTR& result_cloud_ptr,
                    Eigen::Matrix4f& result_pose) override;
-
 private:
     bool SetRegistrationParam(float max_corr_dis, int max_iter, float trans_eps, float euc_eps);
 
 private:
-    pcl::IterativeClosestPoint<CloudData::POINT, CloudData::POINT>::Ptr icp_ptr_;
+    pcl::IterativeClosestPoint<CloudData::POINT, CloudData::POINT>::Ptr icp_ptr_; 
 };
 }
-
 
 #endif
