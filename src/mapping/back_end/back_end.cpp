@@ -18,7 +18,7 @@ BackEnd::BackEnd() {
 }
 
 bool BackEnd::InitWithConfig() {
-    std::string config_file_path = WORK_SPACE_PATH + "/config/back_end/config.yaml";
+    std::string config_file_path = WORK_SPACE_PATH + "/config/mapping/back_end.yaml";
     YAML::Node config_node = YAML::LoadFile(config_file_path);
 
     InitParam(config_node);
@@ -94,13 +94,28 @@ bool BackEnd::InitDataPath(const YAML::Node& config_node) {
 bool BackEnd::Update(const CloudData& cloud_data, const PoseData& laser_odom, const PoseData& gnss_pose) {
     ResetParam();
 
-    SaveTrajectory(laser_odom, gnss_pose);
-
-    if (MaybeNewKeyFrame(cloud_data, laser_odom)) {
+    if (MaybeNewKeyFrame(cloud_data, laser_odom, gnss_pose)) {
+        SavePose(ground_truth_ofs_, gnss_pose.pose);
+        SavePose(laser_odom_ofs_, laser_odom.pose);
         AddNodeAndEdge(gnss_pose);
-        MaybeOptimized();
+        if(MaybeOptimized()){
+            SaveOptimizedPose();
+        }
     }
 
+    return true;
+}
+
+bool BackEnd::InsertLoopPose(const LoopPose& loop_pose)
+{
+    if(!graph_optimizer_config_.use_loop_close)
+        return false;
+    
+    Eigen::Isometry3d isometry;
+    isometry.matrix() = loop_pose.pose.cast<double>();
+    graph_optimizer_ptr_->AddSe3Edge(loop_pose.index0, loop_pose.index1, isometry, graph_optimizer_config_.close_loop_noise);
+
+    new_loop_cnt_ ++;
     return true;
 }
 
@@ -109,19 +124,15 @@ void BackEnd::ResetParam() {
     has_new_optimized_ = false;
 }
 
-bool BackEnd::SaveTrajectory(const PoseData& laser_odom, const PoseData& gnss_pose) {
+bool BackEnd::SavePose(std::ofstream& ofs, const Eigen::Matrix4f& pose) {
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 4; ++j) {
-
-            ground_truth_ofs_ << gnss_pose.pose(i, j);
-            laser_odom_ofs_ << laser_odom.pose(i, j);
+            ofs << pose(i, j);
             
             if (i == 2 && j == 3) {
-                ground_truth_ofs_ << std::endl;
-                laser_odom_ofs_ << std::endl;
+                ofs << std::endl;
             } else {
-                ground_truth_ofs_ << " ";
-                laser_odom_ofs_ << " ";
+                ofs << " ";
             }
         }
     }
@@ -129,7 +140,7 @@ bool BackEnd::SaveTrajectory(const PoseData& laser_odom, const PoseData& gnss_po
     return true;
 }
 
-bool BackEnd::MaybeNewKeyFrame(const CloudData& cloud_data, const PoseData& laser_odom) {
+bool BackEnd::MaybeNewKeyFrame(const CloudData& cloud_data, const PoseData& laser_odom, const PoseData& gnss_odom) {
     static Eigen::Matrix4f last_key_pose = laser_odom.pose;
     if (key_frames_deque_.size() == 0) {
         has_new_key_frame_ = true;
@@ -155,8 +166,11 @@ bool BackEnd::MaybeNewKeyFrame(const CloudData& cloud_data, const PoseData& lase
         key_frame.index = (unsigned int)key_frames_deque_.size();
         key_frame.pose = laser_odom.pose;
         key_frames_deque_.push_back(key_frame);
-
         current_key_frame_ = key_frame;
+
+        current_key_gnss_.time = gnss_odom.time;
+        current_key_gnss_.index = key_frame.index;
+        current_key_gnss_.pose = gnss_odom.pose;
 
     }
 
@@ -169,7 +183,10 @@ bool BackEnd::AddNodeAndEdge(const PoseData& gnss_data)
 
     // 添加关键帧节点
     isometry.matrix() = current_key_frame_.pose.cast<double>();
-    graph_optimizer_ptr_->AddSe3Node(isometry, false);
+    if(!graph_optimizer_config_.use_gnss && graph_optimizer_ptr_->GetNodeNum() == 0)
+        graph_optimizer_ptr_->AddSe3Node(isometry, true);
+    else
+        graph_optimizer_ptr_->AddSe3Node(isometry, false);
 
     new_key_frame_cnt_ ++;
 
@@ -177,6 +194,7 @@ bool BackEnd::AddNodeAndEdge(const PoseData& gnss_data)
     static KeyFrame last_key_frame = current_key_frame_;
     int node_num = graph_optimizer_ptr_->GetNodeNum();
     if(node_num > 1){
+        // 前后两帧之间的位姿变换
         Eigen::Matrix4f relative_pose = last_key_frame.pose.inverse() * current_key_frame_.pose;
         isometry.matrix() = relative_pose.cast<double>();
         graph_optimizer_ptr_->AddSe3Edge(node_num-2, node_num-1, isometry, graph_optimizer_config_.odom_edge_noise);
@@ -219,24 +237,39 @@ bool BackEnd::MaybeOptimized() {
     return true;
 }
 
+bool BackEnd::SaveOptimizedPose()
+{
+    if(graph_optimizer_ptr_->GetNodeNum() == 0)
+        return false;
+    if(!FileManager::CreateFile(optimized_pose_ofs_, trajectory_path_ + "/optimized.txt"))
+        return false;
+
+    graph_optimizer_ptr_->GetOptimizedPose(optimized_pose_);
+
+    for(size_t i = 0; i < optimized_pose_.size(); ++i)
+    {
+        SavePose(optimized_pose_ofs_, optimized_pose_.at(i));
+    }
+
+    return true;
+}
+
 bool BackEnd::ForceOptimize() {
     if (graph_optimizer_ptr_->Optimize())
         has_new_optimized_ = true;
+
+    SaveOptimizedPose();
+
     return has_new_optimized_;
 }
 
 
 void BackEnd::GetOptimizedKeyFrames(std::deque<KeyFrame>& key_frames_deque) {
-    key_frames_deque.clear();
-    if (graph_optimizer_ptr_->GetNodeNum() > 0) {
-        std::deque<Eigen::Matrix4f> optimized_pose;
-        graph_optimizer_ptr_->GetOptimizedPose(optimized_pose);
-        KeyFrame key_frame;
-        for (size_t i = 0; i < optimized_pose.size(); ++i) {
-            key_frame.pose = optimized_pose.at(i);
-            key_frame.index = (unsigned int)i;
-            key_frames_deque.push_back(key_frame);
-        }
+    KeyFrame key_frame;
+    for (size_t i = 0; i < optimized_pose_.size(); ++i) {
+        key_frame.pose = optimized_pose_.at(i);
+        key_frame.index = (unsigned int)i;
+        key_frames_deque.push_back(key_frame);
     }
 }
 
@@ -250,5 +283,9 @@ bool BackEnd::HasNewOptimized() {
 
 void BackEnd::GetLatestKeyFrame(KeyFrame& key_frame) {
     key_frame = current_key_frame_;
+}
+
+void BackEnd::GetLatestKeyGNSS(KeyFrame& key_frame) {
+    key_frame = current_key_gnss_;
 }
 }

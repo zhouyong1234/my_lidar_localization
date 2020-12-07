@@ -16,6 +16,7 @@ public:
                    const Eigen::Matrix4f& predict_pose,
                    CloudData::CLOUD_PTR& result_cloud_ptr,
                    Eigen::Matrix4f& result_pose) override;
+    float GetFitnessScore() override;
 private:
     bool SetRegistrationParam(float max_corr_dis, int max_iter, float trans_eps, float euc_eps);
 
