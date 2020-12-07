@@ -22,7 +22,7 @@
 namespace my_lidar_localization {
 class DataPretreatFlow {
   public:
-    DataPretreatFlow(ros::NodeHandle& nh);
+    DataPretreatFlow(ros::NodeHandle& nh, std::string cloud_topic);
 
     bool Run();
 
