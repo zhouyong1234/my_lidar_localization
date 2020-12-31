@@ -8,7 +8,7 @@
 
 #include <string>
 #include <ros/ros.h>
-#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 #include "my_lidar_localization/sensor_data/key_frame.hpp"
 

@@ -3,7 +3,6 @@
  * @Author: Ren Qian
  * @Date: 2020-02-04 18:53:06
  */
-
 #include "my_lidar_localization/mapping/loop_closing/loop_closing.hpp"
 
 #include <cmath>
@@ -18,14 +17,12 @@
 #include "my_lidar_localization/models/cloud_filter/no_filter.hpp"
 #include "my_lidar_localization/tools/print_info.hpp"
 
-namespace my_lidar_localization
-{
-LoopClosing::LoopClosing(){
+namespace my_lidar_localization {
+LoopClosing::LoopClosing() {
     InitWithConfig();
 }
 
-bool LoopClosing::InitWithConfig()
-{
+bool LoopClosing::InitWithConfig() {
     std::string config_file_path = WORK_SPACE_PATH + "/config/mapping/loop_closing.yaml";
     YAML::Node config_node = YAML::LoadFile(config_file_path);
 
@@ -90,32 +87,30 @@ bool LoopClosing::InitFilter(std::string filter_user, std::shared_ptr<CloudFilte
     return true;
 }
 
-bool LoopClosing::Update(const KeyFrame key_frame, const KeyFrame key_gnss)
-{
+bool LoopClosing::Update(const KeyFrame key_frame, const KeyFrame key_gnss) {
     has_new_loop_pose_ = false;
 
     all_key_frames_.push_back(key_frame);
     all_key_gnss_.push_back(key_gnss);
 
     int key_frame_index = 0;
-    if(!DetectNearestKeyFrame(key_frame_index))
+    if (!DetectNearestKeyFrame(key_frame_index))
         return false;
-    if(!CloudRegistration(key_frame_index))
-        return false;
-    
-    has_new_loop_pose_ = true;
 
+    if (!CloudRegistration(key_frame_index))
+        return false;
+
+    has_new_loop_pose_ = true;
     return true;
 }
 
-bool LoopClosing::DetectNearestKeyFrame(int& key_frame_index)
-{
+bool LoopClosing::DetectNearestKeyFrame(int& key_frame_index) {
     static int skip_cnt = 0;
     static int skip_num = loop_step_;
-    if(++skip_cnt < skip_num)
+    if (++skip_cnt < skip_num)
         return false;
-    
-    if((int)all_key_gnss_.size() < diff_num_ + 1)
+
+    if ((int)all_key_gnss_.size() < diff_num_ + 1)
         return false;
 
     int key_num = (int)all_key_gnss_.size();
@@ -126,38 +121,34 @@ bool LoopClosing::DetectNearestKeyFrame(int& key_frame_index)
     KeyFrame current_key_frame = all_key_gnss_.back();
 
     key_frame_index = -1;
-    for( int i = 0; i < key_num - 1; ++i)
-    {
-        if(key_num - i < diff_num_)
+    for (int i = 0; i < key_num - 1; ++i) {
+        if (key_num - i < diff_num_)
             break;
-
+        
         history_key_frame = all_key_gnss_.at(i);
         distance = fabs(current_key_frame.pose(0,3) - history_key_frame.pose(0,3)) + 
                    fabs(current_key_frame.pose(1,3) - history_key_frame.pose(1,3)) + 
                    fabs(current_key_frame.pose(2,3) - history_key_frame.pose(2,3));
-        if(distance < min_distance){
+        if (distance < min_distance) {
             min_distance = distance;
             key_frame_index = i;
         }
     }
-
-    if(key_frame_index < extend_frame_num_)
+    if (key_frame_index < extend_frame_num_)
         return false;
 
     skip_cnt = 0;
     skip_num = (int)min_distance;
-    if(min_distance > detect_area_){
+    if (min_distance > detect_area_) {
         skip_num = std::max((int)(min_distance / 2.0), loop_step_);
         return false;
-    }
-    else{
+    } else {
         skip_num = loop_step_;
         return true;
     }
 }
 
-bool LoopClosing::CloudRegistration(int key_frame_index)
-{
+bool LoopClosing::CloudRegistration(int key_frame_index) {
     // 生成地图
     CloudData::CLOUD_PTR map_cloud_ptr(new CloudData::CLOUD());
     Eigen::Matrix4f map_pose = Eigen::Matrix4f::Identity();
@@ -175,9 +166,10 @@ bool LoopClosing::CloudRegistration(int key_frame_index)
     // 计算相对位姿
     current_loop_pose_.pose = map_pose.inverse() * result_pose;
 
-    if(registration_ptr_->GetFitnessScore() > fitness_score_limit_)
+    // 判断是否有效
+    if (registration_ptr_->GetFitnessScore() > fitness_score_limit_)
         return false;
-
+    
     static int loop_close_cnt = 0;
     loop_close_cnt ++;
 
@@ -187,22 +179,25 @@ bool LoopClosing::CloudRegistration(int key_frame_index)
               << "fitness score: " << registration_ptr_->GetFitnessScore() 
               << std::endl << std::endl;
 
+    // std::cout << "相对位姿 x y z roll pitch yaw:";
+    // PrintInfo::PrintPose("", current_loop_pose_.pose);
+
     return true;
 }
 
-bool LoopClosing::JointMap(int key_frame_index, CloudData::CLOUD_PTR& map_cloud_ptr, Eigen::Matrix4f& map_pose)
-{
+bool LoopClosing::JointMap(int key_frame_index, CloudData::CLOUD_PTR& map_cloud_ptr, Eigen::Matrix4f& map_pose) {
     map_pose = all_key_gnss_.at(key_frame_index).pose;
     current_loop_pose_.index0 = all_key_frames_.at(key_frame_index).index;
-
+    
+    // 合成地图
     Eigen::Matrix4f pose_to_gnss = map_pose * all_key_frames_.at(key_frame_index).pose.inverse();
-
-    for(int i = key_frame_index - extend_frame_num_; i < key_frame_index + extend_frame_num_ ; ++i)
-    {
+    
+    for (int i = key_frame_index - extend_frame_num_; i < key_frame_index + extend_frame_num_; ++i) {
         std::string file_path = key_frames_path_ + "/key_frame_" + std::to_string(all_key_frames_.at(i).index) + ".pcd";
+        
         CloudData::CLOUD_PTR cloud_ptr(new CloudData::CLOUD());
         pcl::io::loadPCDFile(file_path, *cloud_ptr);
-
+        
         Eigen::Matrix4f cloud_pose = pose_to_gnss * all_key_frames_.at(i).pose;
         pcl::transformPointCloud(*cloud_ptr, *cloud_ptr, cloud_pose);
 
@@ -212,8 +207,7 @@ bool LoopClosing::JointMap(int key_frame_index, CloudData::CLOUD_PTR& map_cloud_
     return true;
 }
 
-bool LoopClosing::JointScan(CloudData::CLOUD_PTR& scan_cloud_ptr, Eigen::Matrix4f& scan_pose)
-{
+bool LoopClosing::JointScan(CloudData::CLOUD_PTR& scan_cloud_ptr, Eigen::Matrix4f& scan_pose) {
     scan_pose = all_key_gnss_.back().pose;
     current_loop_pose_.index1 = all_key_frames_.back().index;
     current_loop_pose_.time = all_key_frames_.back().time;
@@ -225,11 +219,10 @@ bool LoopClosing::JointScan(CloudData::CLOUD_PTR& scan_cloud_ptr, Eigen::Matrix4
     return true;
 }
 
-bool LoopClosing::Registration(CloudData::CLOUD_PTR& map_cloud_ptr,
-                               CloudData::CLOUD_PTR& scan_cloud_ptr,
-                               Eigen::Matrix4f& scan_pose,
-                               Eigen::Matrix4f& result_pose)
-{
+bool LoopClosing::Registration(CloudData::CLOUD_PTR& map_cloud_ptr, 
+                               CloudData::CLOUD_PTR& scan_cloud_ptr, 
+                               Eigen::Matrix4f& scan_pose, 
+                               Eigen::Matrix4f& result_pose) {
     // 点云匹配
     CloudData::CLOUD_PTR result_cloud_ptr(new CloudData::CLOUD());
     registration_ptr_->SetInputTarget(map_cloud_ptr);
@@ -238,8 +231,7 @@ bool LoopClosing::Registration(CloudData::CLOUD_PTR& map_cloud_ptr,
     return true;
 }
 
-bool LoopClosing::HasNewLoopPose()
-{
+bool LoopClosing::HasNewLoopPose() {
     return has_new_loop_pose_;
 }
 

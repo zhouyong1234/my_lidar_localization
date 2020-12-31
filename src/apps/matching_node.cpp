@@ -1,5 +1,5 @@
 /*
- * @Description: 闭环检测的node文件
+ * @Description: 地图匹配定位的node文件
  * @Author: Ren Qian
  * @Date: 2020-02-05 02:56:27
  */
@@ -7,7 +7,7 @@
 #include "glog/logging.h"
 
 #include "my_lidar_localization/global_defination/global_defination.h"
-#include "my_lidar_localization/mapping/loop_closing/loop_closing_flow.hpp"
+#include "my_lidar_localization/matching/matching_flow.hpp"
 
 using namespace my_lidar_localization;
 
@@ -16,16 +16,16 @@ int main(int argc, char *argv[]) {
     FLAGS_log_dir = WORK_SPACE_PATH + "/Log";
     FLAGS_alsologtostderr = 1;
 
-    ros::init(argc, argv, "loop_closing_node");
+    ros::init(argc, argv, "matching_node");
     ros::NodeHandle nh;
 
-    std::shared_ptr<LoopClosingFlow> loop_closing_flow_ptr = std::make_shared<LoopClosingFlow>(nh);
+    std::shared_ptr<MatchingFlow> matching_flow_ptr = std::make_shared<MatchingFlow>(nh);
 
     ros::Rate rate(100);
     while (ros::ok()) {
         ros::spinOnce();
 
-        loop_closing_flow_ptr->Run();
+        matching_flow_ptr->Run();
 
         rate.sleep();
     }

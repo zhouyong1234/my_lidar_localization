@@ -7,8 +7,12 @@
 #define MY_LIDAR_LOCALIZATION_SUBSCRIBER_ODOMETRY_SUBSCRIBER_HPP_
 
 #include <deque>
+#include <mutex>
+#include <thread>
+
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
+
 #include "my_lidar_localization/sensor_data/pose_data.hpp"
 
 namespace my_lidar_localization {
@@ -24,8 +28,9 @@ class OdometrySubscriber {
   private:
     ros::NodeHandle nh_;
     ros::Subscriber subscriber_;
+    std::deque<PoseData> new_pose_data_;
 
-    std::deque<PoseData> new_pose_data_; 
+    std::mutex buff_mutex_; 
 };
 }
 #endif

@@ -24,21 +24,20 @@ class BackEnd {
     BackEnd();
 
     bool Update(const CloudData& cloud_data, const PoseData& laser_odom, const PoseData& gnss_pose);
-
     bool InsertLoopPose(const LoopPose& loop_pose);
-
     bool ForceOptimize();
+
     void GetOptimizedKeyFrames(std::deque<KeyFrame>& key_frames_deque);
     bool HasNewKeyFrame();
     bool HasNewOptimized();
     void GetLatestKeyFrame(KeyFrame& key_frame);
     void GetLatestKeyGNSS(KeyFrame& key_frame);
-  
+
   private:
     bool InitWithConfig();
     bool InitParam(const YAML::Node& config_node);
-    bool InitDataPath(const YAML::Node& config_node);
     bool InitGraphOptimizer(const YAML::Node& config_node);
+    bool InitDataPath(const YAML::Node& config_node);
 
     void ResetParam();
     bool SavePose(std::ofstream& ofs, const Eigen::Matrix4f& pose);
@@ -68,13 +67,14 @@ class BackEnd {
     // 优化器
     std::shared_ptr<InterfaceGraphOptimizer> graph_optimizer_ptr_;
 
-    class GraphOptimizerConfig{
+    class GraphOptimizerConfig {
       public:
-        GraphOptimizerConfig(){
+        GraphOptimizerConfig() {
           odom_edge_noise.resize(6);
           close_loop_noise.resize(6);
           gnss_noise.resize(3);
         }
+
       public:
         bool use_gnss = true;
         bool use_loop_close = false;
@@ -87,7 +87,6 @@ class BackEnd {
         int optimize_step_with_gnss = 100;
         int optimize_step_with_loop = 10;
     };
-
     GraphOptimizerConfig graph_optimizer_config_;
 
     int new_gnss_cnt_ = 0;

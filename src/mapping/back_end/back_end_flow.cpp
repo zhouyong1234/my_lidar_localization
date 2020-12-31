@@ -28,7 +28,7 @@ BackEndFlow::BackEndFlow(ros::NodeHandle& nh, std::string cloud_topic, std::stri
 bool BackEndFlow::Run() {
     if (!ReadData())
         return false;
-
+    
     MaybeInsertLoopPose();
 
     while(HasData()) {
@@ -43,10 +43,9 @@ bool BackEndFlow::Run() {
     return true;
 }
 
-bool BackEndFlow::ForceOptimize()
-{
+bool BackEndFlow::ForceOptimize() {
     back_end_ptr_->ForceOptimize();
-    if(back_end_ptr_->HasNewOptimized()){
+    if (back_end_ptr_->HasNewOptimized()) {
         std::deque<KeyFrame> optimized_key_frames;
         back_end_ptr_->GetOptimizedKeyFrames(optimized_key_frames);
         key_frames_pub_ptr_->Publish(optimized_key_frames);
@@ -63,13 +62,11 @@ bool BackEndFlow::ReadData() {
     return true;
 }
 
-bool BackEndFlow::MaybeInsertLoopPose()
-{
-    while(loop_pose_data_buff_.size() > 0){
+bool BackEndFlow::MaybeInsertLoopPose() {
+    while (loop_pose_data_buff_.size() > 0) {
         back_end_ptr_->InsertLoopPose(loop_pose_data_buff_.front());
         loop_pose_data_buff_.pop_front();
     }
-
     return true;
 }
 
@@ -120,10 +117,8 @@ bool BackEndFlow::UpdateBackEnd() {
 
     if (!odometry_inited) {
         odometry_inited = true;
-        // 前端里程计位姿和gnss位姿增量
         odom_init_pose = current_gnss_pose_data_.pose * current_laser_odom_data_.pose.inverse();
     }
-    // 为后端优化提供初值
     current_laser_odom_data_.pose = odom_init_pose * current_laser_odom_data_.pose;
 
     return back_end_ptr_->Update(current_cloud_data_, current_laser_odom_data_, current_gnss_pose_data_);
@@ -134,6 +129,7 @@ bool BackEndFlow::PublishData() {
 
     if (back_end_ptr_->HasNewKeyFrame()) {
         KeyFrame key_frame;
+
         back_end_ptr_->GetLatestKeyFrame(key_frame);
         key_frame_pub_ptr_->Publish(key_frame);
 

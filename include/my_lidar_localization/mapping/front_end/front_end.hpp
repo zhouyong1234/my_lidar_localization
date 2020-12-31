@@ -8,12 +8,11 @@
 
 #include <deque>
 #include <Eigen/Dense>
-#include <pcl/registration/ndt.h>
 #include <yaml-cpp/yaml.h>
 
 #include "my_lidar_localization/sensor_data/cloud_data.hpp"
-#include "my_lidar_localization/models/registration/ndt_registration.hpp"
-#include "my_lidar_localization/models/cloud_filter/voxel_filter.hpp"
+#include "my_lidar_localization/models/registration/registration_interface.hpp"
+#include "my_lidar_localization/models/cloud_filter/cloud_filter_interface.hpp"
 
 namespace my_lidar_localization {
 class FrontEnd {

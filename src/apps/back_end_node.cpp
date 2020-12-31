@@ -15,8 +15,7 @@ using namespace my_lidar_localization;
 std::shared_ptr<BackEndFlow> _back_end_flow_ptr;
 bool _need_optimize_map = false;
 
-bool optimize_map_callback(optimizeMap::Request &request, optimizeMap::Response &response)
-{
+bool optimize_map_callback(optimizeMap::Request &request, optimizeMap::Response &response) {
     _need_optimize_map = true;
     response.succeed = true;
     return response.succeed;
@@ -34,7 +33,6 @@ int main(int argc, char *argv[]) {
     nh.param<std::string>("cloud_topic", cloud_topic, "/synced_cloud");
     nh.param<std::string>("odom_topic", odom_topic, "/laser_odom");
 
-
     ros::ServiceServer service = nh.advertiseService("optimize_map", optimize_map_callback);
     _back_end_flow_ptr = std::make_shared<BackEndFlow>(nh, cloud_topic, odom_topic);
 
@@ -44,7 +42,7 @@ int main(int argc, char *argv[]) {
 
         _back_end_flow_ptr->Run();
 
-        if(_need_optimize_map){
+        if (_need_optimize_map) {
             _back_end_flow_ptr->ForceOptimize();
             _need_optimize_map = false;
         }

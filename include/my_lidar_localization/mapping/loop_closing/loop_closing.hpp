@@ -1,9 +1,8 @@
 /*
- * @Description: 
+ * @Description: 闭环检测算法
  * @Author: Ren Qian
- * @Date: 2020-02-29 03:32:14
+ * @Date: 2020-02-04 18:52:45
  */
-
 #ifndef MY_LIDAR_LOCALIZATION_MAPPING_LOOP_CLOSING_LOOP_CLOSING_HPP_
 #define MY_LIDAR_LOCALIZATION_MAPPING_LOOP_CLOSING_LOOP_CLOSING_HPP_
 
@@ -17,34 +16,33 @@
 #include "my_lidar_localization/models/registration/registration_interface.hpp"
 #include "my_lidar_localization/models/cloud_filter/cloud_filter_interface.hpp"
 
-namespace my_lidar_localization
-{
-class LoopClosing{
-public:
+namespace my_lidar_localization {
+class LoopClosing {
+  public:
     LoopClosing();
 
     bool Update(const KeyFrame key_frame, const KeyFrame key_gnss);
 
     bool HasNewLoopPose();
     LoopPose& GetCurrentLoopPose();
-private:
+
+  private:
     bool InitWithConfig();
     bool InitParam(const YAML::Node& config_node);
     bool InitDataPath(const YAML::Node& config_node);
     bool InitRegistration(std::shared_ptr<RegistrationInterface>& registration_ptr, const YAML::Node& config_node);
     bool InitFilter(std::string filter_user, std::shared_ptr<CloudFilterInterface>& filter_ptr, const YAML::Node& config_node);
-
+    
     bool DetectNearestKeyFrame(int& key_frame_index);
     bool CloudRegistration(int key_frame_index);
-
     bool JointMap(int key_frame_index, CloudData::CLOUD_PTR& map_cloud_ptr, Eigen::Matrix4f& map_pose);
     bool JointScan(CloudData::CLOUD_PTR& scan_cloud_ptr, Eigen::Matrix4f& scan_pose);
-    bool Registration(CloudData::CLOUD_PTR& map_cloud_ptr,
-                      CloudData::CLOUD_PTR& scan_cloud_ptr,
-                      Eigen::Matrix4f& scan_pose,
+    bool Registration(CloudData::CLOUD_PTR& map_cloud_ptr, 
+                      CloudData::CLOUD_PTR& scan_cloud_ptr, 
+                      Eigen::Matrix4f& scan_pose, 
                       Eigen::Matrix4f& result_pose);
 
-private:
+  private:
     std::string key_frames_path_ = "";
     int extend_frame_num_ = 3;
     int loop_step_ = 10;
@@ -54,7 +52,7 @@ private:
 
     std::shared_ptr<CloudFilterInterface> scan_filter_ptr_;
     std::shared_ptr<CloudFilterInterface> map_filter_ptr_;
-    std::shared_ptr<RegistrationInterface> registration_ptr_;
+    std::shared_ptr<RegistrationInterface> registration_ptr_; 
 
     std::deque<KeyFrame> all_key_frames_;
     std::deque<KeyFrame> all_key_gnss_;
